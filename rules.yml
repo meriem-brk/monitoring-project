@@ -1,10 +1,425 @@
 groups:
-  - name: basic_alerts
-    rules:
-      - alert: HighCPU
-        expr: 100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
-        for: 1m
-        labels:
-          severity: warning
-        annotations:
-          summary: "CPU usage is above 80%"
+- name: Node_Infrastructure_Alerts
+  rules:
+  - alert: HostInstanceDown
+    expr: up{job="node-exporter"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: Server or Node Exporter is down:{{$labels.instance}}
+      description: No response from {{$labels.instance}} for at least 1 minute.
+      runbook_url: https://wiki.example.come/runbooks/node-exporter-down
+  - alert: HostHighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+      > 85
+    for: 3m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: High memory usage on host {{$labels.instance}} (>85%)
+      description: 'current memory usage: {{ $value | printf "%.2f"}}%'
+      runbook_url: https://wiki.example.com/runbooks/high_memory
+  - alert: HostOut0fMemory
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+      > 95
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: Host {{ $labels.instance }}is running out of memory (>95%)
+      description: 'ccurrent usage: {{ $value | printf "%.2f" }}%.OOM killer may be
+        triggered soon.'
+      runbook_url: https://wiki.example.com/runbooks/oom-risk
+  - alert: HostSwapIsFillingUp
+    expr: (1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 >
+      80
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: swap memory on  {{$labels.instance}} is filling up (>80%)
+      description: High swap usage typically indiclly indicates memory pressure.
+      runbook_url: https://wiki.example.com/runbooks/swap-pressure
+  - alert: HostHighCpuload
+    expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+      * 100) > 85
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: High cpu usage on host {{ $labels.instance }} 85%
+      description: 'current cpu usage: {{ $value | printf "%.2f" }}%'
+      runbook_url: https://wiki.example.com/runbooks/low-disk-space
+  - alert: HostDiskSpacelow
+    expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+      * 100 < 15
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Low disk space on root filesystem of {{ $labels.instance }}
+      description: 'Available disk space: {{ $value | printf "%.2f" }}%'
+      runbook_url: https://wiki.example.com/runbooks/low-disk-space
+  - alert: HostDiskWillfillin24hours
+    expr: predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[6h], 24 * 3600)
+      < 0
+    for: 30m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: disk on {{ $labels.instance }} is expected to fill within 24 hours
+      description: Based on current usage rate, the disk will reach capacity in approximately
+        24 hours.
+      runbook_url: https://wiki.example.com/runbooks/disk-full-prediction
+  - alert: HostOutOfInodes
+    expr: (node_filesystem_files_free{mountpoint="/"} / node_filesystem_files{mountpoint="/"})
+      *100 < 10
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Inode usage is critical on {{ $labels.instance }}
+      description: 'Free onodes: {{ $value | printf "%.2f" }}%. creating new files
+        may fail even if disk space is available.'
+      runbook_url: https://wiki.example.com/runbooks/inode-exhaustion
+  - alert: HostFilesystemReadOnly
+    expr: node_filesystem_readonly{mountpoint="/"} == 1
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: High disk I/o utilization on {{ $labels.instance }}
+      description: 'Disk utilization: {{ $value | printf "%.2f"}}%'
+      runbook_url: https://wiki.example.com/runbooks/high-disk-io
+  - alert: HosthighDisjIo
+    expr: rate(node_disk_io_time_seconds_total[5m]) * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Network receive errors on {{ $labels.instance }}
+      description: Interface {{ $labels.device }} is reporting transmit errors.
+      runbook_url: http://wiki.example.com/runbooks/network-errors.
+  - alert: HostNetworkReceiveErrors
+    expr: rate(node_network_receive_errs_total[5m]) > 0
+    for: 2m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Unusual disk read rate on {{ $labels.instane }}
+      description: Disk read rate exceeded 50mB/s for 5 minutes.#Unusual disk write
+        rate
+      runbook_url: https://wiki.example.com/runbooks/unusual-disk-activity
+  - alert: HostNetworkTransmitErrors
+    expr: rate(node_network_transmit_errs_total[5m]) > 0
+    for: 2m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Unusual disk write rate on {{ $labels.instance }}
+      description: Disk write rate exceeded 50mB/s for 5 minutes.
+      runbook_url: https://wiki.example.com/runbooks/unusual-disk-activity
+  - alert: HostUnusualDiskReadrate
+    expr: sum by(instance) (rate(node_disk_read_bytes_total[5m])) > 50 * 1024 * 1024
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: clock on {{ $labels.instance }} is not synchronized with NTP
+      description: Time synchronization issues may cause problems with logging and
+        alerting coordination across servers.
+      runbook_url: https://wiki.example.com/runbooks/clock-sync
+  - alert: HostUnusualDiskWriteRate
+    expr: sum by (instance) (rate(node_disk_written_bytes_total[5m])) > 50 * 1024
+      * 1024
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: unusual disk write rate on {{ $labels.instance}}
+      description: Disk write rate exceeded 50mB/s for 5 minutes
+      runbook_url: https://wiki.example.com/runbooks/unusual-disk-activity
+  - alert: Hostclocknotsynchronising
+    expr: node_timex_sync_status == 0
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: clock on {{ $labels.instance }} is not synchronized with NTP
+      description: Time synchronization issues may cause problems with logging and
+        alerting coordination across servers.
+      runbook_url: https://wiki.example.com/runbooks/clock-sync
+  - alert: HostSystemdServericeFailed
+    expr: node_systemd_unit_state{state="failed"} == 1
+    for: 1m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: 'Systemd service failed on {{ $labels.instance }}: {{ $labels.name
+        }}'
+      description: service {{ $labels.name}} is in a failed state.
+      runbook_url: https://wiki.example.com/runbooks/systemd-failed
+- name: Container_Resource_Alerts
+  rules:
+  - alert: ContainerKilledOrStopped
+    expr: time() - container_last_seen > 60
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: container {{ $labels.name }} has stopped or disappeared
+      description: container {{ $labels.name}} has not been detected for more than
+        1 minute.
+      runbook_url: https://wiki.example.com/runbooks/container-stopped
+  - alert: containerrestartingtoooften
+    expr: rate(container_start_time_seconds{name!=""}[15]) * 60 * 15 > 2
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: container {{$labels.name}} is restarting too frequently
+      description: more than 2 restart events detected in the last 15 minutes - possible
+        crash loop.
+      runbook_url: https://wiki.example.com/runbooks/crash-loop
+  - alert: ContainerMemoryUsageHigh
+    expr: (container_memory_working_set_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""})
+      * 100 > 80
+    for: 2m
+    labels:
+      sevrity: warning
+      team: infra
+    annotations:
+      summary: container {{ $labels.name }} memory usage exceeds 80% of limit
+      description: 'current memory usage : {{ $value | printf "%.2f"}}%'
+      runbook_url: https://wiki.example.com/runbooks/container-memory
+  - alert: ContainerOOMKilled
+    expr: (time() - container_last_seen{name!=""} < 60) and (container_memory_failcnt{name!=""}
+      > 0)
+    for: 0m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: container {{ $labels.name}} was killed due to oom
+      description: Review and adjust memory limits for container {{$labels.name}}.
+      runbook_url: https://wiki.example.com/runbooks/oom-killed
+  - alert: ContainerNetworkPacketsDropped
+    expr: rate(container_network_receive_packets_dropped_total[5m]) > 0
+    for: 2m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: container {{ $labels.name}} is dropping network packets
+      description: 'packet loss rate : {{ $value | printf "%.2f"}} packets/sec'
+      runbook_url: https://wiki.example.com/runbooks/packet-loss
+  - alert: ContainerNetworkErrors
+    expr: rate(container_network_receive_errors_total[5m]) + rate(container_network_transmit_errors_total[5m])
+      > 0
+    for: 2m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Network errors on container {{ $labels.name}}
+      description: container network interface is reporting send or receive errors.
+      runbook_url: https://wiki.example.com/runbooks/container-network-errors
+  - alert: ContainerCpuUsageHigh
+    expr: (sum by(name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) /
+      count by (name) (node_cpu_seconds_total{mode="idle"})) * 100 > 80
+    for: 3m
+    labels:
+      severity: warning
+      taem: infra
+    annotations:
+      summary: container {{ $labels.name}} cpu usage exceeds 80%
+      description: 'current cpu usage: {{ $value | printf "%.2f"}} %'
+      runbook_url: https://wiki.example.com/runbooks/container-cpu
+  - alert: ContainerCpuThrottled
+    expr: rate(container_cpu_cfs_throttled_periods_total{name!=""}[5m]) / rate(container_cpu_cfs_periods_total{name!=""}[5m])
+      * 100 > 25
+    for: 3m
+    labels:
+      severity: warning
+      taem: infra
+    annotations:
+      summary: container {{ $labels.name}}  is experiencing cpu throttling (>25%)
+      description: consider increasing the cpu limit for this container.
+      runbook_url: https://wiki.example.com/runbooks/cpu-throttling
+- name: Network_And_EndpointDown
+  rules:
+  - alert: EndpointDown
+    expr: probe_success == 0
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: endpoint {{$labels.instance}} is down
+      description: probe failed to reach {{$labels.instance}}.
+      runbook_url: https://wiki.example.com/runbooks/endpoint-down
+  - alert: EndpointSlowResponse
+    expr: probe_http_duration_seconds > 2
+    for: 2m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: Endpoint {{$labels.instance}} response is slow
+      description: 'Response time: {{ $value | printf "%.2f"}} seconds'
+      runbook_url: https://wiki.example.com/runbooks/slow-endpoint
+  - alert: EndpointHttp5xxError
+    expr: probe_http_status_code > 500
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: Endpoint {{ $labels.instace}} is returning server errors
+      descriptions: 'HTTP status code: {{$value}}'
+      runbook_url: https://wiki.example.com/runbooks/http-5xx
+  - alert: SSLCertificateExpiringSoon
+    expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+    for: 10m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: SSL certificate for {{ $labels.instace}} is expiring soon
+      descriptions: 'Days until expiration: {{$value | printf "%.1f"}}'
+      runbook_url: https://wiki.example.com/runbooks/ssl-expiration
+  - alert: SSLCertificateExpired
+    expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 0
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: SSL certificate for {{ $labels.instace}} is expired
+      description: Renew the certificate immediately.
+      runbook_url: https://wiki.example.com/runbooks/ssl-expired
+  - alert: DNSResolutionFailed
+    expr: probe_dns_lookup_time_seconds == 0 and probe_success == 0
+    for: 2m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: DNS resolution failed for {{$labels.instance}}
+      descriptions: unable to resolve hostname. check DNS configuration.
+      runbook_url: https://wiki.example.com/runbooks/dns-failed
+- name: Critical_Processes_Alerts
+  rules:
+  - alert: processDown
+    expr: namedprocess_namegroup_states{state="runing"} == 0
+    for: 1m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: processes {{ $labels.groupname}} is consuming excessive memory
+      descriptions: Memory usage exceeded 1GB. check for memory leaks.
+      runbook_url: https://wiki.example.com/runbooks/process-down
+  - alert: ProcessHighMemoryUsage
+    expr: namedprocess_namegroup_memory_bytes{memtype="resident"} > 1 * 1024 * 1024
+      * 1024
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: process{{ $labels.groupname}} is consuming excessive memory
+      descriptions: memory usage excessded 1GB. check for memory leaks.
+      runbook_url: https://wiki.example.com/runbooks/memory-leak
+  - alert: ProcessHighcpuUsage
+    expr: rate(namedprocess_namegroup_cpu_seconds_total[5m]) * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: 'process{{ $labels.groupname}} is consuming excessive cpu '
+      descriptions: memory usage {{ $value | printf "%.2f"}}%
+      runbook_url: https://wiki.example.com/runbooks/high-process-cpu
+- name: Monitoring_stack_self_Alerts
+  rules:
+  - alert: PrometheusTargetMissing
+    expr: up == 0
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: prometheus target {{$labels.job}} on {{$labels.instance}} is missing
+      descriptions: prometheus can no longer scrape metrics from this target.
+      runbook_url: https://wiki.example.com/runbooks/prometheus-target-missing
+  - alert: PrometheusConfigReloadFailed
+    expr: prometheus_config_last_reload_successful == 0
+    for: 5m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: prometheus config reload has failed
+      descriptions: the last configuration reload attempt was unsuccessful.
+      runbook_url: https://wiki.example.com/runbooks/prometheus-config-failed
+  - alert: PrometheusRuleEvaluationFailures
+    expr: rate(prometheus_rule_evaluation_failures_total[5m]) > 0
+    for: 5m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: prometheus is experiencing rule evaluation failures
+      descriptions: some alerting rules may not be working properly.
+      runbook_url: https://wiki.example.com/runbooks/prometheus-config-failed
+  - alert: PrometheusNotificationQueueRunningFull
+    expr: predict_linear(prometheus_notifications_queue_length[5m], 60 * 30) > promeyheus_notifications_queue_capacity
+    for: 5m
+    labels:
+      severity: warning
+      team: infra
+    annotations:
+      summary: prometheus notification queue is expected  to up soon
+      descriptions: Alertmanager may be unable to receive alerts at the current rate.
+      runbook_url: https://wiki.example.com/runbooks/queue-full
+  - alert: AlertmanagerNotificationsFailing
+    expr: rate(alertmanager_notifications_failed_total[5m]) > 0
+    for: 5m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: Alertmanager is failing to send notifications via {{ $labels.integration}}
+      descriptions: Alerts are being generated but notifications are not being delivered!
+      runbook_url: https://wiki.example.com/runbooks/alertmanager-failed
+  - alert: AlertmanagerDown
+    expr: up{job="alertmanager"} == 0
+    for: 2m
+    labels:
+      severity: critical
+      team: infra
+    annotations:
+      summary: Alertmanager is down
+      descriptions: No alerts will be sent while Alertmanager is offline - this is
+        a critical blindspot!
+      runbook_url: https://wiki.example.com/runbooks/alertmanager-down

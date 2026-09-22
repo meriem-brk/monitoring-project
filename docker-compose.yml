@@ -4,6 +4,13 @@ services:
     image: prom/prometheus
     ports:
       - "9090:9090"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 256M 
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./rules.yml:/etc/prometheus/rules.yml
@@ -11,13 +18,163 @@ services:
     image: grafana/grafana
     ports:
       - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
+    environment:
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=${GF_SMTP_USER}
+      - GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD}
+      - GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS}
+    volumes:
+      - grafana_data:/var/lib/grafana
   node-exporter:
-    image: prom/node-exporter
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    hostname: node-exporter
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.processes'
+      - '--collector.interrupts'
+      - '--collector.systemd'
+      - '--collector.netstat'
+      - '--collector.netclass'
+    
     ports:
       - "9100:9100"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
   alertmanager:
     image: prom/alertmanager
     ports:
       - "9093:9093"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./smtp_password.txt:/etc/alertmanager/smtp_password.txt
+  promlens:
+    image: prom/promlens:v0.3.0
+    container_name: monitoring-project-promlens
+    ports:
+      - "8090:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
+  process-exporter:
+    image: ncabatoff/process-exporter
+    container_name: process-exporter
+    restart: always
+    privileged: true
+    volumes:
+      - /proc:/host/proc
+      - ./process-exporter-config.yml:/config/config.yml
+    command:
+      - --procfs=/host/proc
+      - -config.path=/config/config.yml
+    ports:
+      - "9256:9256"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter
+    container_name: blackbox-exporter
+    restart: always
+    ports:
+      - "9115:9115"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    user: "0"
+    ports:
+      - "3100:3100"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
+    volumes:
+      - /etc/loki/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki-config.yaml
+
+  alloy:
+    image: grafana/alloy:latest
+    container_name: alloy
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    ports:
+      - "12345:12345"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M 
+
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8090:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg 
+
+volumes:
+  grafana_data:
+  loki_data:

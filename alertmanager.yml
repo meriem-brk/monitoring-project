@@ -1,7 +1,31 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'epoxyflowers16@gmail.com'
+  smtp_auth_username: 'epoxyflowers16@gmail.com'
+  smtp_auth_password_file: '/etc/alertmanager/smtp_password.txt'
+  smtp_require_tls: true
+
 route:
-  receiver: default
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 3h
+  receiver: 'email-notifications'
 
 receivers:
-  - name: default
-    webhook_configs:
-      - url: http://localhost:5001/
+  - name: 'email-notifications'
+    email_configs:
+      - to: 'epoxyflowers16@gmail.com'
+        send_resolved: true
+    
+    #slack_configs:
+    #  - api_url: 'http://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN/slack'
+    #   send_resolved: true
+    #    text: "Summary: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}"
+
+   # slack_configs:
+   #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+   #     channel: '#alerts'
+   #     send_resolved: true
+   #     text: "summary: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}"  

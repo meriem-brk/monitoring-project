@@ -1,4 +1,9 @@
-*.env
-.env*
-prometheus_data/
-grafana_data/
+smtp_password.txt
+promtail-linux-amd64
+*.zip
+positions.yaml
+-H
+-d
+fix_all.py
+fix_yaml.py
+rules_clean.yml
