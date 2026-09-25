@@ -1,5 +1,5 @@
 # Monitoring Stack with Docker
-
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=flat&logo=prometheus&logoColor=white) ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=flat&logo=grafana&logoColor=white) ![Loki](https://img.shields.io/badge/Loki-F5DB19?style=flat&logo=grafana&logoColor=black) ![Status](https://img.shields.io/badge/status-active-brightgreen)
 A complete, production-style observability stack built with **Prometheus, Grafana, Loki, Alloy, Alertmanager, cAdvisor, Blackbox Exporter, Node Exporter, and Process Exporter** — fully containerized with Docker Compose.
 
 This project covers both **metrics** (via Prometheus) and **logs** (via Loki), unified in Grafana dashboards, with automated alerting through Alertmanager.
