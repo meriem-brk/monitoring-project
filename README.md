@@ -1,5 +1,7 @@
 # Monitoring Stack with Docker
+
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=flat&logo=prometheus&logoColor=white) ![Grafana](https://img.shields.io/badge/Grafana-F46800?style=flat&logo=grafana&logoColor=white) ![Loki](https://img.shields.io/badge/Loki-F5DB19?style=flat&logo=grafana&logoColor=black) ![Status](https://img.shields.io/badge/status-active-brightgreen)
+
 A complete, production-style observability stack built with **Prometheus, Grafana, Loki, Alloy, Alertmanager, cAdvisor, Blackbox Exporter, Node Exporter, and Process Exporter** — fully containerized with Docker Compose.
 
 This project covers both **metrics** (via Prometheus) and **logs** (via Loki), unified in Grafana dashboards, with automated alerting through Alertmanager.
@@ -54,20 +56,29 @@ Access the services:
 
 ### Node Exporter — System Overview
 ![node-exporter](assets/screenshots/node-exporter1.png)
+*Host-level system metrics: CPU, memory, disk, and network usage.*
+
 ![node-exporter](assets/screenshots/node-exporter2.png)
+*Detailed CPU and memory trends over time.*
+
 ![node-exporter](assets/screenshots/node-exporter3.png)
+*Network traffic and disk space usage.*
 
 ### Blackbox Exporter — Probe Duration
 ![blackbox-exporter](assets/screenshots/blackbox-exporter1.png)
+*Endpoint probe monitoring — response time and uptime status.*
 
 ### cAdvisor — Container Metrics
 ![cadvisor](assets/screenshots/cAdvisor.png)
+*Per-container resource usage: CPU, memory, and network.*
 
 ### Logs (Loki)
 ![logs](assets/screenshots/logs.png)
+*Centralized log search across system and Docker containers.*
 
 ### Process Exporter
 ![processes](assets/screenshots/processes.png)
+*Per-process resource consumption on the host.*
 
 ---
 
